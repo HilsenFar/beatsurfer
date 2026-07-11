@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Beatsurfer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="preload" as="image" href="./assets/bg/title.webp">
+  <link rel="preload" as="image" href="./assets/pilots/vael.webp">
+  <link rel="stylesheet" href="./css/style.css" />
+  <!-- Boot watchdog: guarantees the screen never hangs silently on a load failure,
+       and always surfaces the REAL cause instead of a generic timeout message. -->
+  <script>
+    (function () {
+      function showErr(msg, real) {
+        if (real) { window.__bootRealErr = true; try { console.error('[boot] ' + msg); } catch (e) {} }
+        var el = document.getElementById('bootStatus');
+        if (el) { el.textContent = 'BOOT ERROR — details below'; el.style.color = '#ff3b6b'; }
+        var box = document.getElementById('bootError');
+        if (box) { box.style.display = 'block'; box.textContent = String(msg).slice(0, 800); }
+      }
+      window.__bootFail = function (m) { showErr(m, true); };
+      // Synchronous / module-evaluation errors (bubble phase) carry a message.
+      window.addEventListener('error', function (e) {
+        if (window.__bootOK || window.__app) return;
+        if (e && e.message) showErr(e.message + (e.filename ? ('\n@ ' + e.filename + ':' + (e.lineno || 0)) : ''), true);
+      });
+      // Resource load failures (app.bundle.js, stylesheet, image) fire on the element
+      // and do NOT bubble to window.onerror — catch them in the capture phase so the
+      // real culprit is shown rather than the generic 8 s notice.
+      window.addEventListener('error', function (e) {
+        if (window.__bootOK || window.__app) return;
+        var t = e && e.target;
+        if (t && t !== window && (t.src || t.href)) showErr('Failed to load resource:\n' + (t.src || t.href), true);
+      }, true);
+      window.addEventListener('unhandledrejection', function (e) {
+        if (window.__bootOK || window.__app) return;
+        var r = e && e.reason; showErr('Unhandled rejection: ' + ((r && r.stack) || (r && r.message) || r || ''), true);
+      });
+      // Last-resort watchdog: only show the generic notice when nothing more specific
+      // has already been reported, so a real error is never overwritten.
+      setTimeout(function () {
+        if (!window.__bootOK && !window.__app && !window.__bootRealErr) {
+          showErr('Engine did not start within 8 s. Press F12 → Console for details.', false);
+        }
+      }, 8000);
+    })();
+  </script>
+</head>
+<body>
+  <div id="scanlines"></div>
+
+  <!-- BOOT -->
+  <section id="screen-boot" class="screen active">
+    <div class="boot-box">
+      <div class="logo-mark">◣◢</div>
+      <h1 class="logo">BEAT<span>SURFER</span></h1>
+      <p class="boot-status" id="bootStatus">initializing systems…</p>
+      <pre id="bootError" style="display:none;max-width:680px;margin:18px auto 0;padding:12px 14px;text-align:left;white-space:pre-wrap;color:#ff8aa6;background:rgba(255,59,107,.08);border:1px solid rgba(255,59,107,.5);border-radius:8px;font-size:12px;line-height:1.5;"></pre>
+    </div>
+  </section>
+
+  <!-- TITLE -->
+  <section id="screen-title" class="screen" data-bg="bg/title.webp">
+    <div class="title-wrap">
+      <h1 class="logo big">BEAT<span>SURFER</span></h1>
+      <p class="tagline">surf the stems · one song · four instruments</p>
+      <div class="menu">
+        <button class="btn primary" data-action="start">INSERT COIN ▸ START</button>
+        <button class="btn" data-action="howto">HOW TO PLAY</button>
+        <button class="btn" data-action="settings">SETTINGS</button>
+        <button class="btn ghost" data-action="quit">QUIT</button>
+      </div>
+      <p class="footer-note">A neon-synthwave rhythm flyer · assets generated with Higgsfield</p>
+    </div>
+  </section>
+
+  <!-- HOW TO -->
+  <section id="screen-howto" class="screen">
+    <div class="panel">
+      <h2>HOW TO PLAY</h2>
+      <div class="howto-grid">
+        <div><span class="k">◂ ▸ / A D</span><p>Surf between the three lanes</p></div>
+        <div><span class="k">SPACE</span><p>STRIKE the note as it hits the line</p></div>
+        <div><span class="k">▴ ▾ / W S</span><p>Tilt up / down</p></div>
+        <div><span class="k">Gamepad</span><p>Left stick to steer · A to strike</p></div>
+      </div>
+      <p class="explain">Every track is split into <b>four instrument levels</b> when Demucs is installed — DRUMS,
+      BASS, OTHER and VOCALS — with the original frequency levels as fallback. Same song, four completely
+      different charts. Land your strike dead on the beat for <b>PERFECT</b>; just being in the
+      right lane earns a <b>GRAZE</b>; wrong lane breaks your combo.</p>
+      <button class="btn primary" data-action="back-title">◂ BACK</button>
+    </div>
+  </section>
+
+  <!-- ROSTER / CHARACTER SELECT -->
+  <section id="screen-roster" class="screen">
+    <div class="panel wide">
+      <h2>SELECT YOUR PILOT</h2>
+      <div id="rosterGrid" class="roster-grid"></div>
+      <div class="roster-detail" id="rosterDetail"></div>
+      <div class="row-actions">
+        <button class="btn ghost" data-action="back-title">◂ BACK</button>
+        <button class="btn primary" data-action="confirm-pilot">CONFIRM ▸</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- LOAD TRACK -->
+  <section id="screen-load" class="screen">
+    <div class="panel">
+      <h2>LOAD A TRACK</h2>
+      <p class="sub">Paste a YouTube or SoundCloud link. Your track is fetched and analyzed
+        <b>locally on this machine</b> — split into instrument stems when Demucs is installed, with frequency levels as fallback. Nothing streams during play.</p>
+
+      <div class="url-row">
+        <input id="urlInput" type="text" placeholder="https://www.youtube.com/watch?v=…  or  https://soundcloud.com/…" />
+        <button class="btn primary" data-action="analyze-url">ANALYZE ▸</button>
+      </div>
+
+      <div id="dropZone" class="dropzone">
+        <p>…or <b>drop an audio file</b> here (mp3 · wav · flac · m4a · ogg) — or click to choose</p>
+        <input id="fileInput" type="file" accept="audio/*" hidden />
+      </div>
+
+      <div id="stemStatus" class="stem-status">STEM ENGINE: CHECKING…</div>
+      <button class="btn ghost" data-action="install-demucs">INSTALL / FIX STEM ENGINE</button>
+
+      <div class="load-foot">
+        <button class="btn" data-action="sample">▶ PLAY THE BUILT-IN DEMO TRACK</button>
+        <p class="legal">Importing from YouTube/SoundCloud may conflict with their Terms of Service.
+          Use tracks you own or have the right to use. Local files are always the safest path.</p>
+      </div>
+      <button class="btn ghost" data-action="back-roster">◂ BACK</button>
+    </div>
+  </section>
+
+  <!-- ANALYZING -->
+  <section id="screen-analyze" class="screen">
+    <div class="panel">
+      <h2 id="analyzeTitle">ANALYZING…</h2>
+      <div class="eq" id="analyzeEq"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      <div class="progress"><div class="progress-bar" id="analyzeBar"></div></div>
+      <p class="analyze-stage" id="analyzeStage">preparing…</p>
+    </div>
+  </section>
+
+  <!-- LEVEL (BAND) SELECT -->
+  <section id="screen-levels" class="screen">
+    <div class="panel wide">
+      <h2>CHOOSE A FREQUENCY LEVEL</h2>
+      <p class="sub" id="levelsTrack">track</p>
+      <div id="bandGrid" class="band-grid"></div>
+      <button class="btn ghost" data-action="back-load">◂ NEW TRACK</button>
+    </div>
+  </section>
+
+  <!-- PRE-LEVEL: difficulty + input picker -->
+  <section id="screen-prelevel" class="screen">
+    <div class="panel wide">
+      <h2>FLIGHT SETUP</h2>
+      <p class="sub" id="prelevelBand">prepare for launch</p>
+
+      <div class="setup-block">
+        <div class="setup-label">DIFFICULTY MODE</div>
+        <div class="opt-row" id="diffOpts">
+          <button class="opt" data-diff="normal">
+            <span class="opt-name">NORMAL</span>
+            <span class="opt-desc">Position only · single line · no timing button</span>
+          </button>
+          <button class="opt" data-diff="hard">
+            <span class="opt-name">HARD</span>
+            <span class="opt-desc">Adds vertical movement</span>
+          </button>
+          <button class="opt" data-diff="expert">
+            <span class="opt-name">EXPERT</span>
+            <span class="opt-desc">Adds strike-timing button</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="setup-block">
+        <div class="setup-label">INPUT METHOD</div>
+        <div class="opt-row" id="inputOpts">
+          <button class="opt" data-input="keyboard">
+            <span class="opt-name">KEYBOARD</span>
+            <span class="opt-desc">Arrows / WASD · Space to strike</span>
+          </button>
+          <button class="opt" data-input="mouse">
+            <span class="opt-name">MOUSE</span>
+            <span class="opt-desc">Aim with the cursor · click to strike</span>
+          </button>
+          <button class="opt" data-input="controller">
+            <span class="opt-name">CONTROLLER</span>
+            <span class="opt-desc">Left stick to steer · A to strike</span>
+          </button>
+        </div>
+        <p class="opt-note">VR — coming soon</p>
+      </div>
+
+      <div class="row-actions">
+        <button class="btn ghost" data-action="back-prelevel">◂ BACK</button>
+        <button class="btn primary" data-action="launch-level">LAUNCH ▸</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="screen-settings" class="screen">
+    <div class="panel wide">
+      <h2>SETTINGS</h2>
+
+      <div class="settings-grid">
+        <div class="setting-row">
+          <label for="setVolume">VOLUME</label>
+          <input id="setVolume" type="range" min="0" max="1" step="0.05" />
+          <span class="setting-val" id="valVolume">0.90</span>
+        </div>
+
+        <div class="setting-row">
+          <label for="setSensitivity">SENSITIVITY</label>
+          <input id="setSensitivity" type="range" min="0.3" max="2.5" step="0.05" />
+          <span class="setting-val" id="valSensitivity">1.00</span>
+        </div>
+
+        <div class="setting-row">
+          <label>INVERT VERTICAL</label>
+          <button class="opt toggle" id="setInvertY" data-toggle="invertY"><span class="opt-name">OFF</span></button>
+        </div>
+
+        <div class="setting-row">
+          <label>NEON GLOW</label>
+          <button class="opt toggle" id="setGlow" data-toggle="glow"><span class="opt-name">OFF</span></button>
+        </div>
+
+        <div class="setting-row">
+          <label for="setGlowAmount">GLOW STRENGTH</label>
+          <input id="setGlowAmount" type="range" min="0.1" max="1.2" step="0.05" />
+          <span class="setting-val" id="valGlowAmount">0.45</span>
+        </div>
+
+        <div class="setting-row">
+          <label for="setCamHeight">CAMERA HEIGHT</label>
+          <input id="setCamHeight" type="range" min="2" max="12" step="0.5" />
+          <span class="setting-val" id="valCamHeight">5.5</span>
+        </div>
+
+        <div class="setting-row">
+          <label for="setCamDist">CAMERA DISTANCE</label>
+          <input id="setCamDist" type="range" min="10" max="40" step="1" />
+          <span class="setting-val" id="valCamDist">22</span>
+        </div>
+
+        <div class="setting-row">
+          <label>FIRST-PERSON VIEW</label>
+          <button class="opt toggle" id="setFirstPerson" data-toggle="firstPerson"><span class="opt-name">OFF</span></button>
+        </div>
+      </div>
+
+      <div class="setup-block">
+        <div class="setup-label">BACKDROP</div>
+        <div class="opt-row wrap" id="backdropOpts">
+          <button class="opt" data-backdrop="auto"><span class="opt-name">AUTO</span></button>
+          <button class="opt" data-backdrop="none"><span class="opt-name">NONE</span></button>
+          <button class="opt" data-backdrop="corridor"><span class="opt-name">CORRIDOR</span></button>
+          <button class="opt" data-backdrop="corridor_grid"><span class="opt-name">CORRIDOR GRID</span></button>
+          <button class="opt" data-backdrop="dj_controller"><span class="opt-name">DJ CONTROLLER</span></button>
+          <button class="opt" data-backdrop="psychedelic_station"><span class="opt-name">PSYCHEDELIC STATION</span></button>
+        </div>
+      </div>
+
+      <div class="row-actions">
+        <button class="btn" data-action="calibrate">CALIBRATE AUDIO</button>
+        <button class="btn primary" data-action="back-settings">◂ BACK</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CALIBRATION -->
+  <section id="screen-calibrate" class="screen">
+    <div class="panel">
+      <h2>AUDIO CALIBRATION</h2>
+      <p class="sub">Tap SPACE or ENTER to the beat — 8 taps. We'll measure your timing offset and save it.</p>
+      <div id="calTapArea" data-action="cal-tap" class="cal-tap-area">
+        <div class="cal-tap-text">TAP TO THE BEAT</div>
+        <div id="calDots" class="cal-dots"></div>
+      </div>
+      <p id="calResult" class="cal-result"></p>
+      <button class="btn ghost" data-action="cal-skip">SKIP</button>
+    </div>
+  </section>
+
+  <!-- GAME -->
+  <section id="screen-game" class="screen game">
+    <canvas id="gl"></canvas>
+    <div id="hud">
+      <div class="hud-top">
+        <div class="hud-left">
+          <img id="hudPilot" class="hud-pilot" alt="" />
+          <div>
+            <div id="hudBand" class="hud-band">LOW</div>
+            <div id="hudPilotName" class="hud-pilotname">Vael</div>
+          </div>
+        </div>
+        <div class="hud-right">
+          <div class="hud-score" id="hudScore">0</div>
+          <div class="hud-acc" id="hudAcc">100%</div>
+        </div>
+      </div>
+      <div class="hud-combo" id="hudCombo"><span id="comboNum">0</span><em>COMBO</em></div>
+      <div class="milestone" id="milestone"></div>
+      <div class="judge" id="judge"></div>
+
+      <!-- Star Power meter -->
+      <div id="hudStarPower" class="hud-starpower">
+        <div class="sp-label">STAR POWER</div>
+        <div class="sp-bar"><div class="sp-fill" id="starPowerFill"></div></div>
+        <div class="sp-hint">SHIFT / TILT</div>
+      </div>
+
+      <!-- Energy/Health meter -->
+      <div class="hud-energy">
+        <div class="energy-label">ENERGY</div>
+        <div class="energy-bar"><div class="energy-fill" id="energyFill"></div></div>
+      </div>
+
+      <!-- Star Power visual overlay (blue tint during Overdrive) -->
+      <div id="starpowerOverlay" class="starpower-overlay"></div>
+
+      <div class="hud-bottom">
+        <div class="songbar"><div class="songbar-fill" id="songFill"></div></div>
+      </div>
+      <div class="boostmeter"><div class="boostmeter-fill" id="boostFill"></div></div>
+    </div>
+    <div id="countdown" class="countdown"></div>
+    <div id="pause" class="pause-overlay">
+      <div class="panel small">
+        <h2>PAUSED</h2>
+        <button class="btn primary" data-action="resume">RESUME</button>
+        <button class="btn" data-action="restart">RESTART LEVEL</button>
+        <button class="btn" data-action="settings">SETTINGS</button>
+        <button class="btn ghost" data-action="quit-game">QUIT TO LEVELS</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="screen-results" class="screen">
+    <div class="panel">
+      <h2>LEVEL CLEAR</h2>
+      <div id="resultHighScore" class="result-highscore" style="display:none;">NEW HIGH SCORE!</div>
+      <div class="result-rank" id="resultRank">A</div>
+      <div class="result-score" id="resultScore">0</div>
+      <div class="result-grid" id="resultGrid"></div>
+      <div class="row-actions">
+        <button class="btn" data-action="replay">↻ REPLAY</button>
+        <button class="btn primary" data-action="other-band">OTHER LEVELS ▸</button>
+        <button class="btn ghost" data-action="new-track">NEW TRACK</button>
+      </div>
+    </div>
+  </section>
+
+  <script defer src="./app.bundle.js"></script>
+  <!-- PWA wiring: only on https (the static web deploy). Skipped on file:// (Electron)
+       and on localhost so dev never fights a stale service worker cache. -->
+  <script>
+    (function () {
+      if (location.protocol !== 'https:') return;
+      var l = document.createElement('link');
+      l.rel = 'manifest'; l.href = './manifest.webmanifest';
+      document.head.appendChild(l);
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('./sw.js').catch(function () {});
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
