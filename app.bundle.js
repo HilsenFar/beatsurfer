@@ -27278,7 +27278,7 @@
   var LANES = 5;
   var LANE_X = [-5, -2.5, 0, 2.5, 5];
   var LANE_HALF = 2.5;
-  var NUDGE_FACTOR = 0.55;
+  var NUDGE_FACTOR = 0;
   var CENTER_LANE = LANES - 1 >> 1;
   var X_MAX = 5.4;
   var Y_MAX = 1.35;
@@ -28920,6 +28920,10 @@
       this._bindConfigControls();
       this._initMenuNav();
       this._loadCalibration();
+      this._loadHitSounds();
+      if (document.referrer.startsWith("android-app://")) {
+        document.getElementById("apk-link")?.remove();
+      }
       this._bootSequence();
       this._refreshStemStatus();
       this._applyWebGating();
@@ -29783,6 +29787,7 @@
       setToggle("setInvertY", cfg2.invertY === true);
       setToggle("setGlow", cfg2.glow === true);
       setToggle("setFirstPerson", cfg2.firstPerson === true);
+      setToggle("setHitSounds", cfg2.hitSounds !== false);
       const backdrop = cfg2.backdrop || "auto";
       document.querySelectorAll("#backdropOpts .opt").forEach((b) => b.classList.toggle("sel", b.dataset.backdrop === backdrop));
     }
@@ -29825,6 +29830,10 @@
       bindToggle("setInvertY", "invertY");
       bindToggle("setGlow", "glow");
       bindToggle("setFirstPerson", "firstPerson");
+      bindToggle("setHitSounds", "hitSounds");
+      document.getElementById("setHitSounds")?.addEventListener("click", () => {
+        localStorage.setItem("bs_hitSounds", (window.BSConfig || {}).hitSounds === false ? "0" : "1");
+      });
       const bindRange = (id, valId, key, fixed) => {
         const r = document.getElementById(id);
         if (!r) return;
@@ -30313,6 +30322,10 @@
       }
       return 0;
     }
+    _loadHitSounds() {
+      window.BSConfig = window.BSConfig || {};
+      window.BSConfig.hitSounds = localStorage.getItem("bs_hitSounds") !== "0";
+    }
     _skipCalibration() {
       this._calActive = false;
       this._calMetroStop();
@@ -30352,12 +30365,13 @@
       o.stop(this.actx.currentTime + dur + 0.02);
     }
     _sfxJudge(t) {
+      const hitOff = (window.BSConfig || {}).hitSounds === false;
       if (t === "perfect") {
-        this._blip(880, 0.12, "sine", 0.16, 1480);
+        if (!hitOff) this._blip(880, 0.12, "sine", 0.16, 1480);
       } else if (t === "good") {
-        this._blip(620, 0.1, "sine", 0.13);
+        if (!hitOff) this._blip(620, 0.1, "sine", 0.13);
       } else if (t === "graze") {
-        this._blip(420, 0.08, "triangle", 0.1);
+        if (!hitOff) this._blip(420, 0.08, "triangle", 0.1);
       } else if (t === "miss") {
         this._blip(150, 0.18, "sawtooth", 0.14, 80);
       } else if (t === "whiff") {

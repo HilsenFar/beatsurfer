@@ -49,6 +49,10 @@ body{position:relative}
 #apk-link{display:inline-block;margin-top:1.6em;font-size:12px;letter-spacing:.14em;color:#5fe0a0;
   text-decoration:none;border:1px solid rgba(95,224,160,.35);border-radius:18px;padding:8px 18px;transition:.15s}
 #apk-link:hover{border-color:#5fe0a0;box-shadow:0 0 16px rgba(95,224,160,.35)}
+/* already inside the installed app (TWA/PWA) */
+@media all and (display-mode: fullscreen), (display-mode: standalone), (display-mode: minimal-ui){
+  #apk-link{display:none}
+}
 
 /* ---- buttons ---- */
 .menu{display:flex;flex-direction:column;gap:14px;align-items:center}
