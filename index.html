@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Beatsurfer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -296,6 +296,12 @@
   <!-- GAME -->
   <section id="screen-game" class="screen game">
     <canvas id="gl"></canvas>
+    <!-- Touch lane hints: 5 vertical strips matching the engine's LANE_X snaps.
+         Shown only on coarse-pointer (touch) devices; pads light while touched. -->
+    <div id="touchLanes" class="touch-lanes" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+    <!-- Touch-only controls (coarse pointers): star power + pause -->
+    <button id="spTouchBtn" class="sp-touch-btn" aria-label="Activate star power">★</button>
+    <button id="pauseTouchBtn" class="pause-touch-btn" aria-label="Pause">❚❚</button>
     <div id="hud">
       <div class="hud-top">
         <div class="hud-left">

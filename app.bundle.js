@@ -28575,6 +28575,50 @@
       }
       return false;
     }
+    // ----- touch input (called by the app.js touch overlay) ---------------------
+    // Mobile support. Everything routes through the SAME _key() handler the
+    // keyboard uses so hit logic, strike edges and star power stay single-sourced:
+    //   zone 0..4  = five vertical screen strips = the Digit1..5 lane snaps
+    //   press      = Digit snap + the Space strike edge (Expert)
+    //   release    = Space release (when the LAST finger lifts)
+    touchLaneDown(zone) {
+      if (!this.running) return;
+      const z = clamp2(zone | 0, 0, LANES - 1);
+      this._key("Digit" + (z + 1), true, null);
+      if (!this.input.strike) this._key("Space", true, null);
+      else this._edge.strike = true;
+      this._touchHeld = (this._touchHeld || 0) + 1;
+    }
+    // finger dragged into a different strip: follow it (no new strike edge)
+    touchLaneMove(zone) {
+      if (!this.running) return;
+      const z = clamp2(zone | 0, 0, LANES - 1);
+      this._key("Digit" + (z + 1), true, null);
+    }
+    // vertical steer for hard/expert: dir = +1 up / -1 down / 0 neutral
+    touchVertical(dir) {
+      if (!this.running) return;
+      this._key("KeyW", dir > 0, null);
+      this._key("KeyS", dir < 0, null);
+    }
+    touchLaneUp() {
+      this._touchHeld = Math.max(0, (this._touchHeld || 1) - 1);
+      if (this._touchHeld === 0) {
+        if (this.running) {
+          this._key("Space", false, null);
+          this._key("KeyW", false, null);
+          this._key("KeyS", false, null);
+        } else {
+          this.input.strike = false;
+          this.input.up = false;
+          this.input.down = false;
+        }
+      }
+    }
+    // exactly what the ShiftLeft key does (activateStarPower via _key)
+    touchStarPower() {
+      this._key("ShiftLeft", true, null);
+    }
     // ----- render -------------------------------------------------------------
     _setupPost() {
       try {
@@ -28851,6 +28895,7 @@
       document.querySelectorAll(".screen").forEach((s) => {
         this.screens[s.id] = s;
       });
+      this.isCoarse = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
       this.analyzer = new BeatAnalyzer();
       this.game = null;
       this.actx = null;
@@ -28878,6 +28923,7 @@
       this._bootSequence();
       this._refreshStemStatus();
       this._applyWebGating();
+      this._initTouch();
     }
     // ----- web build gating -----------------------------------------------------
     // In a plain browser (no Electron preload bridge) the URL import, Demucs
@@ -28899,7 +28945,127 @@
       Object.values(this.screens).forEach((s) => s.classList.remove("active"));
       this.screens[id].classList.add("active");
       this.current = id;
+      const inGame = this.isCoarse && id === "screen-game";
+      const tl = document.getElementById("touchLanes");
+      if (tl) tl.classList.toggle("show", inGame);
+      const pb = document.getElementById("pauseTouchBtn");
+      if (pb) pb.classList.toggle("show", inGame);
+      if (id !== "screen-game") {
+        const sp = document.getElementById("spTouchBtn");
+        if (sp) sp.classList.remove("show");
+      }
       if (id !== "screen-game" && id !== "screen-boot") setTimeout(() => this._setFocus(0), 40);
+    }
+    // ----- touch input (mobile) ------------------------------------------------
+    // The canvas is split into 5 vertical strips = the engine's 5 lane snaps
+    // (LANE_X / the Digit1..5 keys). pointerdown in a strip snaps the ship there
+    // and raises the same strike edge Space does (Expert). Each pointerId is
+    // tracked independently so multi-touch works: a second finger on another
+    // lane never cancels the first, and strike-hold releases only when the LAST
+    // finger lifts. Dragging a held finger across strips follows it lane-to-lane.
+    _initTouch() {
+      this._touchPts = /* @__PURE__ */ new Map();
+      const canvas = document.getElementById("gl");
+      if (!canvas) return;
+      canvas.style.touchAction = "none";
+      const zoneOf = (e) => {
+        const w = window.innerWidth || 1;
+        return Math.max(0, Math.min(4, Math.floor(e.clientX / w * 5)));
+      };
+      const vertOf = (e) => {
+        const h = window.innerHeight || 1;
+        const f = e.clientY / h;
+        return f < 0.38 ? 1 : f > 0.72 ? -1 : 0;
+      };
+      const inPlay = () => this.current === "screen-game" && this.game && this.game.running && !this.paused;
+      const lanesEl = document.getElementById("touchLanes");
+      const anyOn = (zone) => {
+        for (const z of this._touchPts.values()) if (z === zone) return true;
+        return false;
+      };
+      const light = (zone, on) => {
+        if (!lanesEl) return;
+        const pad = lanesEl.children[zone];
+        if (pad) pad.classList.toggle("lit", on);
+      };
+      canvas.addEventListener("pointerdown", (e) => {
+        if (this.actx && this.actx.state === "suspended") this.actx.resume();
+        if (e.pointerType === "mouse" && !this.isCoarse) return;
+        if (!inPlay()) return;
+        e.preventDefault();
+        const zone = zoneOf(e);
+        this._touchPts.set(e.pointerId, zone);
+        this.game.touchLaneDown(zone);
+        if ((window.BSConfig || {}).diffMode !== "normal") this.game.touchVertical(vertOf(e));
+        light(zone, true);
+      });
+      canvas.addEventListener("pointermove", (e) => {
+        if (!this._touchPts.has(e.pointerId) || !inPlay()) return;
+        e.preventDefault();
+        const prev = this._touchPts.get(e.pointerId);
+        const zone = zoneOf(e);
+        if (zone !== prev) {
+          this._touchPts.set(e.pointerId, zone);
+          this.game.touchLaneMove(zone);
+          if (!anyOn(prev)) light(prev, false);
+          light(zone, true);
+        }
+        if ((window.BSConfig || {}).diffMode !== "normal") this.game.touchVertical(vertOf(e));
+      });
+      const release = (e) => {
+        if (!this._touchPts.has(e.pointerId)) return;
+        const zone = this._touchPts.get(e.pointerId);
+        this._touchPts.delete(e.pointerId);
+        if (this.game) this.game.touchLaneUp();
+        if (!anyOn(zone)) light(zone, false);
+      };
+      canvas.addEventListener("pointerup", release);
+      canvas.addEventListener("pointercancel", release);
+      canvas.addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
+      canvas.addEventListener("touchstart", (e) => {
+        if (inPlay()) e.preventDefault();
+      }, { passive: false });
+      const spBtn = document.getElementById("spTouchBtn");
+      if (spBtn) {
+        spBtn.addEventListener("pointerdown", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (this.game && this.game.running) this.game.touchStarPower();
+        });
+      }
+      const pauseBtn = document.getElementById("pauseTouchBtn");
+      if (pauseBtn) {
+        pauseBtn.addEventListener("pointerdown", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (this.current === "screen-game" && !this.levelOver) this._togglePause(!this.paused);
+        });
+      }
+      if (this.isCoarse) this._applyTouchHints();
+    }
+    // Swap keyboard hint texts for touch instructions on coarse-pointer devices
+    _applyTouchHints() {
+      const touchHelp = [
+        ["TAP A LANE", "Tap one of the 5 lane zones to surf there"],
+        ["TAP", "Tap on the beat to STRIKE the note (Expert)"],
+        ["SLIDE UP / DOWN", "Touch high or low on the screen to tilt"],
+        ["\u2605 BUTTON", "Tap the pulsing star button for STAR POWER"]
+      ];
+      document.querySelectorAll("#screen-howto .howto-grid > div").forEach((cell, i) => {
+        if (!touchHelp[i]) return;
+        const k = cell.querySelector(".k");
+        const p = cell.querySelector("p");
+        if (k) k.textContent = touchHelp[i][0];
+        if (p) p.textContent = touchHelp[i][1];
+      });
+      const calSub = document.querySelector("#screen-calibrate .sub");
+      if (calSub) calSub.textContent = "Tap the pad below to the beat \u2014 8 taps. We'll measure your timing offset and save it.";
+      const spHint = document.querySelector("#hudStarPower .sp-hint");
+      if (spHint) spHint.textContent = "TAP THE \u2605 BUTTON";
+      const kbDesc = document.querySelector('#inputOpts .opt[data-input="keyboard"] .opt-desc');
+      if (kbDesc) kbDesc.textContent = "Touch: tap the lanes \xB7 tap on the beat to strike";
+      const kbName = document.querySelector('#inputOpts .opt[data-input="keyboard"] .opt-name');
+      if (kbName) kbName.textContent = "TOUCH / KEYS";
     }
     // ----- controller / keyboard menu navigation (Steam Deck friendly) --------
     _initMenuNav() {
@@ -29806,6 +29972,13 @@
       if (spReady) {
         if (this.game.starPower >= 0.5 && !this.game.starPowerActive) spReady.classList.add("ready");
         else spReady.classList.remove("ready");
+      }
+      const spBtn = document.getElementById("spTouchBtn");
+      if (spBtn) {
+        spBtn.classList.toggle(
+          "show",
+          this.isCoarse && this.game.starPower >= 0.5 && !this.game.starPowerActive
+        );
       }
       const energyFill = document.getElementById("energyFill");
       if (energyFill) {
