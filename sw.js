@@ -1,6 +1,6 @@
 // BeatSurfer service worker — cache-first shell, network-first for audio.
 // Bump VERSION on every deploy so clients pick up the new build.
-const VERSION = 'beatsurfer-v2';
+const VERSION = 'beatsurfer-v3';
 
 const PRECACHE = [
   './',
