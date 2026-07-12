@@ -27310,6 +27310,9 @@
     return tier;
   }
   var clamp2 = (v, a, b) => Math.max(a, Math.min(b, v));
+  var CAM_FOLLOW_X = 0.35;
+  var CAM_FOLLOW_Y = 0.25;
+  var CAM_SMOOTH = 6;
   var BS_DEFAULTS = {
     diffMode: "normal",
     // 'normal' | 'hard' | 'expert'
@@ -27321,8 +27324,10 @@
     glow: true,
     // tasteful HIGH-THRESHOLD bloom — only the brightest
     // neon blooms; dark note outlines keep notes readable
-    glowAmount: 0.62,
-    // bloom strength when on
+    glowAmount: 0.2,
+    // bloom strength when on (playtest: 0.62 blew out the
+    // whole screen from the first second — keep the default
+    // subtle; the settings slider still goes up to 1.2)
     camHeight: 5.5,
     camDist: 22,
     firstPerson: false
@@ -27358,6 +27363,8 @@
       this.input = { left: false, right: false, up: false, down: false, strike: false };
       this.shipX = 0;
       this.shipY = 0;
+      this._camX = 0;
+      this._camY = 0;
       this.laneVel = 0;
       this.boost = 0;
       this._shake = 0;
@@ -27511,19 +27518,27 @@
         varying vec2 vUv;
         uniform float uTime; uniform float uPulse; uniform vec3 uColor;
         void main() {
-          vec2 g = vUv * vec2(46.0, 150.0);
-          g.y += uTime * 11.0;
+          // "Streger p\xE5 tv\xE6rs" fix: the old grid drew 150 CROSS lines, each held
+          // at a constant PIXEL width all the way to the horizon by the fwidth
+          // normalisation \u2014 so the whole world read as horizontal stripes.
+          // Cross lines are now (a) half as dense, (b) faded out with distance
+          // so only the near field shows them, (c) dimmer than the along-track
+          // lines. Along-track lines + the horizon band keep the synthwave look.
+          vec2 g = vUv * vec2(46.0, 78.0);
+          g.y += uTime * 5.7;
           vec2 grid = abs(fract(g - 0.5) - 0.5) / fwidth(g);
-          float line = min(grid.x, grid.y);
-          float l = 1.0 - min(line, 1.0);
+          float lx = 1.0 - min(grid.x, 1.0);                 // lines running toward the horizon
+          float ly = 1.0 - min(grid.y, 1.0);                 // cross lines
+          float near = 1.0 - smoothstep(0.30, 0.72, vUv.y);  // vUv.y: 0 near player, 1 far
+          float l = max(lx, ly * 0.45 * near);
           float fade = smoothstep(1.0, 0.06, vUv.y);
           // Dark field near the player so notes pop; richer neon toward the horizon.
           vec3 col = mix(uColor, vec3(0.16, 0.62, 1.0), 0.35);
-          float glow = l * (0.30 + uPulse * 0.6);
+          float glow = l * (0.24 + uPulse * 0.5);
           // bright neon band along the far horizon edge (blooms nicely, very synthwave)
           float horizon = smoothstep(0.984, 1.0, vUv.y) * (0.6 + uPulse * 0.85);
           vec3 outc = col * glow + uColor * horizon;
-          float a = glow * fade * 0.85 + horizon;
+          float a = glow * fade * 0.8 + horizon;
           gl_FragColor = vec4(outc, a);
         }`
         )
@@ -27989,6 +28004,8 @@
       this.shipX = 0;
       this.shipY = 0;
       this.boost = 0;
+      this._camX = 0;
+      this._camY = 0;
       const c = new Color(band.color);
       this.gridMat.uniforms.uColor.value = c;
       this.bandColor = c;
@@ -28108,7 +28125,7 @@
         this.reticle.scale.setScalar(s);
         this.reticle.material.opacity = 0.55 + this._retPulse * 0.45;
       }
-      this._placeCamera();
+      this._placeCamera(dt);
       this._updateBloom(dt);
       if (this.chromaticGrainPass) {
         this.chromaticGrainPass.uniforms.uTime.value += dt;
@@ -28129,8 +28146,11 @@
       }
       this._render();
     }
-    _placeCamera() {
+    _placeCamera(dt) {
       const C = cfg();
+      const k = 1 - Math.exp(-(dt || 0.016) * CAM_SMOOTH);
+      this._camX += (this.shipX - this._camX) * k;
+      this._camY += (this.shipY - this._camY) * k;
       const sx = (Math.random() - 0.5) * this._shake;
       const sy = (Math.random() - 0.5) * this._shake;
       if (C.firstPerson) {
@@ -28138,8 +28158,8 @@
           this.camera.fov = 72;
           this.camera.updateProjectionMatrix();
         }
-        this.camera.position.set(this.shipX, PLAY_Y + this.shipY + 0.25 + sy, Z_HIT - 0.4 + sx);
-        this.camera.lookAt(this.shipX * 0.55, PLAY_Y + this.shipY * 0.4, -40);
+        this.camera.position.set(this._camX, PLAY_Y + this._camY + 0.25 + sy, Z_HIT - 0.4 + sx);
+        this.camera.lookAt(this._camX * 0.55, PLAY_Y + this._camY * 0.4, -40);
         if (this.ship) this.ship.visible = false;
       } else {
         if (this.camera.fov !== 64) {
@@ -28148,8 +28168,8 @@
         }
         const h = clamp2(typeof C.camHeight === "number" ? C.camHeight : 5.5, 2, 12);
         const d = clamp2(typeof C.camDist === "number" ? C.camDist : 22, 10, 40);
-        this.camera.position.set(this.shipX * 0.22 + sx, h + sy, d);
-        this.camera.lookAt(this.shipX * 0.32, 0.3, -24);
+        this.camera.position.set(this._camX * CAM_FOLLOW_X + sx, h + this._camY * CAM_FOLLOW_Y + sy, d);
+        this.camera.lookAt(this._camX * (CAM_FOLLOW_X + 0.1), 0.3 + this._camY * 0.15, -24);
         if (this.ship) this.ship.visible = true;
       }
     }
@@ -28158,7 +28178,7 @@
       const C = cfg();
       this.bloom.enabled = !!C.glow;
       if (C.glow) {
-        const base = typeof C.glowAmount === "number" ? C.glowAmount : 0.45;
+        const base = typeof C.glowAmount === "number" ? C.glowAmount : 0.2;
         const target = base + this._intensity.bloomBoost + this._starFlash * 0.3;
         this.bloom.strength += (target - this.bloom.strength) * Math.min(1, dt * 6);
       }
@@ -28624,9 +28644,16 @@
       try {
         this.composer = new EffectComposer(this.renderer);
         this.composer.addPass(new RenderPass(this.scene, this.camera));
-        this.bloom = new UnrealBloomPass(new Vector2(1280, 800), 0.62, 0.7, 0.82);
+        this.bloom = new UnrealBloomPass(new Vector2(1280, 800), 0.2, 0.7, 0.85);
         this.bloom.enabled = !!cfg().glow;
         this.composer.addPass(this.bloom);
+        try {
+          if (this.renderer.capabilities.isWebGL2) {
+            if (this.composer.renderTarget1) this.composer.renderTarget1.samples = 4;
+            if (this.composer.renderTarget2) this.composer.renderTarget2.samples = 4;
+          }
+        } catch (e) {
+        }
         this._setupChromaticGrain();
       } catch (e) {
         this.composer = null;
@@ -28928,6 +28955,62 @@
       this._refreshStemStatus();
       this._applyWebGating();
       this._initTouch();
+      this._bindBackButton();
+    }
+    // ----- Android/TWA back button ---------------------------------------------
+    // A history entry is pushed when a level starts. Pressing the hardware back
+    // button during a run then PAUSES instead of leaving the app; pressing back
+    // again while paused quits to level select. The entry is re-armed after each
+    // pause-by-back and silently consumed (history.back with a suppression flag)
+    // when the level ends normally, so no ghost states pile up.
+    _bindBackButton() {
+      this._histArmed = false;
+      this._suppressPop = false;
+      window.addEventListener("popstate", () => {
+        if (this._suppressPop) {
+          this._suppressPop = false;
+          return;
+        }
+        if (this.current === "screen-game" && !this.levelOver) {
+          if (this.inCountdown) {
+            try {
+              history.pushState({ bs: "run" }, "");
+            } catch (e) {
+            }
+            return;
+          }
+          if (!this.paused) {
+            this._togglePause(true);
+            try {
+              history.pushState({ bs: "run" }, "");
+            } catch (e) {
+            }
+          } else {
+            this._histArmed = false;
+            this._quitToLevels();
+          }
+        } else {
+          this._histArmed = false;
+        }
+      });
+    }
+    _armHistory() {
+      if (this._histArmed) return;
+      try {
+        history.pushState({ bs: "run" }, "");
+        this._histArmed = true;
+      } catch (e) {
+      }
+    }
+    _disarmHistory() {
+      if (!this._histArmed) return;
+      this._histArmed = false;
+      this._suppressPop = true;
+      try {
+        history.back();
+      } catch (e) {
+        this._suppressPop = false;
+      }
     }
     // ----- web build gating -----------------------------------------------------
     // In a plain browser (no Electron preload bridge) the URL import, Demucs
@@ -29163,7 +29246,7 @@
       if (back) back.click();
     }
     _menuKey(e) {
-      if (this.current === "screen-game" || this.current === "screen-boot") return;
+      if (this.current === "screen-game" && !this.paused || this.current === "screen-boot") return;
       if (e.target && (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT" && e.target.type !== "range")) return;
       const focused = this._focusedEl();
       const isRange = focused && focused.tagName === "INPUT" && focused.type === "range";
@@ -29199,6 +29282,7 @@
           break;
         case "Backspace":
         case "Escape":
+          if (this.current === "screen-game") break;
           this._menuBack();
           e.preventDefault();
           break;
@@ -29206,7 +29290,7 @@
     }
     _menuPoll() {
       requestAnimationFrame(() => this._menuPoll());
-      if (this.current === "screen-game" || this.current === "screen-boot") return;
+      if (this.current === "screen-boot") return;
       const pads = navigator.getGamepads ? navigator.getGamepads() : [];
       let gp = null;
       for (const p of pads) {
@@ -29216,13 +29300,17 @@
         }
       }
       if (!gp) return;
-      const x = gp.axes[0] || 0, y = gp.axes[1] || 0;
       const pressed = (i) => !!(gp.buttons[i] && gp.buttons[i].pressed);
       const edge = (k, v) => {
         const was = this._padPrev[k];
         this._padPrev[k] = v;
         return v && !was;
       };
+      if (edge("start", pressed(9)) && this.current === "screen-game" && !this.levelOver) {
+        this._togglePause(!this.paused);
+      }
+      if (this.current === "screen-game" && !this.paused) return;
+      const x = gp.axes[0] || 0, y = gp.axes[1] || 0;
       const right = edge("r", x > 0.5) | edge("dR", pressed(15));
       const left = edge("l", x < -0.5) | edge("dL", pressed(14));
       const down = edge("d", y > 0.5) | edge("dD", pressed(13));
@@ -29513,7 +29601,10 @@
       if (!this.stemSources) return;
       for (const name of ["drums", "bass", "other", "vocals"]) {
         try {
-          this.stemSources[name] && this.stemSources[name].stop();
+          if (this.stemSources[name]) {
+            this.stemSources[name].onended = null;
+            this.stemSources[name].stop();
+          }
         } catch (e) {
         }
       }
@@ -29774,7 +29865,7 @@
       };
       setRange("setVolume", "valVolume", cfg2.volume != null ? cfg2.volume : 0.9, 2);
       setRange("setSensitivity", "valSensitivity", cfg2.sensitivity != null ? cfg2.sensitivity : 1, 2);
-      setRange("setGlowAmount", "valGlowAmount", cfg2.glowAmount != null ? cfg2.glowAmount : 0.45, 2);
+      setRange("setGlowAmount", "valGlowAmount", cfg2.glowAmount != null ? cfg2.glowAmount : 0.2, 2);
       setRange("setCamHeight", "valCamHeight", cfg2.camHeight != null ? cfg2.camHeight : 5.5, 1);
       setRange("setCamDist", "valCamDist", cfg2.camDist != null ? cfg2.camDist : 22, 0);
       const setToggle = (id, on) => {
@@ -29899,7 +29990,10 @@
       this.levelOver = false;
       this.paused = false;
       document.getElementById("pause").classList.remove("show");
+      this._armHistory();
+      this.inCountdown = true;
       await this._countdown();
+      this.inCountdown = false;
       this._play(0);
       this._duck(false);
       this.game.start();
@@ -30112,8 +30206,12 @@
     _finishLevel(failed) {
       if (this.levelOver) return;
       this.levelOver = true;
+      this._disarmHistory();
       try {
-        this.source && this.source.stop();
+        if (this.source) {
+          this.source.onended = null;
+          this.source.stop();
+        }
       } catch (e) {
       }
       this._stopStemSources();
@@ -30149,45 +30247,60 @@
       setTimeout(() => this.show("screen-results"), 700);
     }
     _togglePause(on) {
-      if (this.levelOver) return;
+      if (this.levelOver || this.inCountdown) return;
       this.paused = on;
       document.getElementById("pause").classList.toggle("show", on);
       if (on) {
         this.pausedAt = this._audioTime();
         this.seeking = true;
         try {
-          this.source && this.source.stop();
+          if (this.source) {
+            this.source.onended = null;
+            this.source.stop();
+          }
         } catch (e) {
         }
         this._stopStemSources();
         this.seeking = false;
         this.game.stop();
+        setTimeout(() => this._setFocus(0), 30);
       } else {
         this._play(this.pausedAt);
         this.game.start();
+        this.loopToken = (this.loopToken || 0) + 1;
+        this._loop(this.loopToken);
       }
     }
     _restartLevel() {
       try {
-        this.source && this.source.stop();
+        if (this.source) {
+          this.source.onended = null;
+          this.source.stop();
+        }
       } catch (e) {
       }
       this._stopStemSources();
       this._unmuteAllStems();
       this.levelOver = true;
+      this.paused = false;
       document.getElementById("pause").classList.remove("show");
       this._startLevel(this.bandId);
     }
     _quitToLevels() {
       this.levelOver = true;
       try {
-        this.source && this.source.stop();
+        if (this.source) {
+          this.source.onended = null;
+          this.source.stop();
+        }
       } catch (e) {
       }
       this._stopStemSources();
       this._unmuteAllStems();
       this.game && this.game.stop();
+      this.paused = false;
       document.getElementById("pause").classList.remove("show");
+      this._disarmHistory();
       this.show("screen-levels");
     }
     // ----- HUD setters --------------------------------------------------------
