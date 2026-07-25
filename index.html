@@ -6,10 +6,14 @@
   <title>Beatsurfer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <!-- Design System v2 typography: Orbitron (logotype), Chakra Petch (UI/HUD),
+       Barlow (body). Same URL ds.css @imports, so it stays one request. -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&family=Chakra+Petch:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <link rel="preload" as="image" href="./assets/bg/title.webp">
   <link rel="preload" as="image" href="./assets/pilots/vael.webp">
+  <!-- GITATO Design System v2 — linked FIRST so this surface can override it. -->
+  <link rel="stylesheet" href="./ds.css" />
   <link rel="stylesheet" href="./css/style.css" />
   <!-- Boot watchdog: guarantees the screen never hangs silently on a load failure,
        and always surfaces the REAL cause instead of a generic timeout message. -->
@@ -50,16 +54,18 @@
     })();
   </script>
 </head>
-<body>
+<body data-gt="beatsurfer">
+  <!-- Kept for backwards compatibility. The CRT scanline pass now lives on
+       .screen::after so it can be gated BELOW every text-bearing layer. -->
   <div id="scanlines"></div>
 
   <!-- BOOT -->
   <section id="screen-boot" class="screen active">
     <div class="boot-box">
-      <div class="logo-mark">◣◢</div>
+      <div class="logo-mark"><svg class="gi" aria-hidden="true"><use href="icons.svg#gi-waveform"></use></svg></div>
       <h1 class="logo">BEAT<span>SURFER</span></h1>
       <p class="boot-status" id="bootStatus">initializing systems…</p>
-      <pre id="bootError" style="display:none;max-width:680px;margin:18px auto 0;padding:12px 14px;text-align:left;white-space:pre-wrap;color:#ff8aa6;background:rgba(255,59,107,.08);border:1px solid rgba(255,59,107,.5);border-radius:8px;font-size:12px;line-height:1.5;"></pre>
+      <pre id="bootError" style="display:none"></pre>
     </div>
   </section>
 
@@ -69,12 +75,12 @@
       <h1 class="logo big">BEAT<span>SURFER</span></h1>
       <p class="tagline">surf the stems · one song · four instruments</p>
       <div class="menu">
-        <button class="btn primary" data-action="start">INSERT COIN ▸ START</button>
+        <button class="btn primary" data-action="start">INSERT COIN <svg class="gi" aria-hidden="true"><use href="icons.svg#gi-chevron-right"></use></svg> START</button>
         <button class="btn" data-action="howto">HOW TO PLAY</button>
         <button class="btn" data-action="settings">SETTINGS</button>
         <button class="btn ghost" data-action="quit">QUIT</button>
       </div>
-      <a id="apk-link" href="./beatsurfer.apk" download>📱 GET THE ANDROID APP (.apk)</a>
+      <a id="apk-link" href="./beatsurfer.apk" download><svg class="gi" aria-hidden="true"><use href="icons.svg#gi-phone"></use></svg> GET THE ANDROID APP (.apk)</a>
       <p class="footer-note">A neon-synthwave rhythm flyer · assets generated with Higgsfield</p>
     </div>
   </section>
@@ -93,7 +99,7 @@
       BASS, OTHER and VOCALS — with the original frequency levels as fallback. Same song, four completely
       different charts. Land your strike dead on the beat for <b>PERFECT</b>; just being in the
       right lane earns a <b>GRAZE</b>; wrong lane breaks your combo.</p>
-      <button class="btn primary" data-action="back-title">◂ BACK</button>
+      <button class="btn primary" data-action="back-title"><svg class="gi" aria-hidden="true"><use href="icons.svg#gi-chevron-left"></use></svg> BACK</button>
     </div>
   </section>
 
@@ -104,8 +110,8 @@
       <div id="rosterGrid" class="roster-grid"></div>
       <div class="roster-detail" id="rosterDetail"></div>
       <div class="row-actions">
-        <button class="btn ghost" data-action="back-title">◂ BACK</button>
-        <button class="btn primary" data-action="confirm-pilot">CONFIRM ▸</button>
+        <button class="btn ghost" data-action="back-title"><svg class="gi" aria-hidden="true"><use href="icons.svg#gi-chevron-left"></use></svg> BACK</button>
+        <button class="btn primary" data-action="confirm-pilot">CONFIRM <svg class="gi" aria-hidden="true"><use href="icons.svg#gi-chevron-right"></use></svg></button>
       </div>
     </div>
   </section>
@@ -119,7 +125,7 @@
 
       <div class="url-row">
         <input id="urlInput" type="text" placeholder="https://www.youtube.com/watch?v=…  or  https://soundcloud.com/…" />
-        <button class="btn primary" data-action="analyze-url">ANALYZE ▸</button>
+        <button class="btn primary" data-action="analyze-url">ANALYZE <svg class="gi" aria-hidden="true"><use href="icons.svg#gi-chevron-right"></use></svg></button>
       </div>
 
       <div id="dropZone" class="dropzone">
@@ -131,11 +137,11 @@
       <button class="btn ghost" data-action="install-demucs">INSTALL / FIX STEM ENGINE</button>
 
       <div class="load-foot">
-        <button class="btn" data-action="sample">▶ PLAY THE BUILT-IN DEMO TRACK</button>
+        <button class="btn" data-action="sample"><svg class="gi" aria-hidden="true"><use href="icons.svg#gi-play"></use></svg> PLAY THE BUILT-IN DEMO TRACK</button>
         <p class="legal">Importing from YouTube/SoundCloud may conflict with their Terms of Service.
           Use tracks you own or have the right to use. Local files are always the safest path.</p>
       </div>
-      <button class="btn ghost" data-action="back-roster">◂ BACK</button>
+      <button class="btn ghost" data-action="back-roster"><svg class="gi" aria-hidden="true"><use href="icons.svg#gi-chevron-left"></use></svg> BACK</button>
     </div>
   </section>
 
@@ -155,7 +161,7 @@
       <h2>CHOOSE A FREQUENCY LEVEL</h2>
       <p class="sub" id="levelsTrack">track</p>
       <div id="bandGrid" class="band-grid"></div>
-      <button class="btn ghost" data-action="back-load">◂ NEW TRACK</button>
+      <button class="btn ghost" data-action="back-load"><svg class="gi" aria-hidden="true"><use href="icons.svg#gi-chevron-left"></use></svg> NEW TRACK</button>
     </div>
   </section>
 
@@ -203,8 +209,8 @@
       </div>
 
       <div class="row-actions">
-        <button class="btn ghost" data-action="back-prelevel">◂ BACK</button>
-        <button class="btn primary" data-action="launch-level">LAUNCH ▸</button>
+        <button class="btn ghost" data-action="back-prelevel"><svg class="gi" aria-hidden="true"><use href="icons.svg#gi-chevron-left"></use></svg> BACK</button>
+        <button class="btn primary" data-action="launch-level">LAUNCH <svg class="gi" aria-hidden="true"><use href="icons.svg#gi-chevron-right"></use></svg></button>
       </div>
     </div>
   </section>
@@ -280,7 +286,7 @@
 
       <div class="row-actions">
         <button class="btn" data-action="calibrate">CALIBRATE AUDIO</button>
-        <button class="btn primary" data-action="back-settings">◂ BACK</button>
+        <button class="btn primary" data-action="back-settings"><svg class="gi" aria-hidden="true"><use href="icons.svg#gi-chevron-left"></use></svg> BACK</button>
       </div>
     </div>
   </section>
@@ -306,8 +312,8 @@
          Shown only on coarse-pointer (touch) devices; pads light while touched. -->
     <div id="touchLanes" class="touch-lanes" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
     <!-- Touch-only controls (coarse pointers): star power + pause -->
-    <button id="spTouchBtn" class="sp-touch-btn" aria-label="Activate star power">★</button>
-    <button id="pauseTouchBtn" class="pause-touch-btn" aria-label="Pause">❚❚</button>
+    <button id="spTouchBtn" class="sp-touch-btn" aria-label="Activate star power"><svg class="gi" aria-hidden="true"><use href="icons.svg#gi-star"></use></svg></button>
+    <button id="pauseTouchBtn" class="pause-touch-btn" aria-label="Pause"><svg class="gi" aria-hidden="true"><use href="icons.svg#gi-pause"></use></svg></button>
     <div id="hud">
       <div class="hud-top">
         <div class="hud-left">
@@ -368,8 +374,8 @@
       <div class="result-score" id="resultScore">0</div>
       <div class="result-grid" id="resultGrid"></div>
       <div class="row-actions">
-        <button class="btn" data-action="replay">↻ REPLAY</button>
-        <button class="btn primary" data-action="other-band">OTHER LEVELS ▸</button>
+        <button class="btn" data-action="replay"><svg class="gi" aria-hidden="true"><use href="icons.svg#gi-refresh"></use></svg> REPLAY</button>
+        <button class="btn primary" data-action="other-band">OTHER LEVELS <svg class="gi" aria-hidden="true"><use href="icons.svg#gi-chevron-right"></use></svg></button>
         <button class="btn ghost" data-action="new-track">NEW TRACK</button>
       </div>
     </div>
