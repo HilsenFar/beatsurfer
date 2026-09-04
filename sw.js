@@ -1,6 +1,6 @@
-﻿// BeatSurfer service worker - cache-first shell, network-first for audio.
+// BeatSurfer service worker - cache-first shell, network-first for audio.
 // Bump VERSION on every deploy so clients pick up the new build.
-const VERSION = 'beatsurfer-v6';
+const VERSION = 'beatsurfer-v7';
 
 const PRECACHE = [
   './',
@@ -12,7 +12,9 @@ const PRECACHE = [
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  './icons/icon-512-maskable.png'
+  './icons/icon-512-maskable.png',
+  './assets/bg/title.webp',
+  './assets/pilots/vael.webp'
 ];
 
 self.addEventListener('install', (e) => {
