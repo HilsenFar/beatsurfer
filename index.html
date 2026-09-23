@@ -4,15 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>BeatSurfer</title>
+  <!-- Everything is served from this origin (fonts too, since DS v2.1). The same
+       file runs in the Electron build, where a CSP is the main guard against an
+       injected script reaching the preload bridge. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: data:; connect-src 'self' blob: data:; font-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- Design System v2 typography: Orbitron (logotype), Chakra Petch (UI/HUD),
-       Barlow (body). Same URL ds.css @imports, so it stays one request. -->
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&family=Chakra+Petch:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Design System v2.1 typography, self-hosted: Orbitron (logotype), Chakra
+       Petch (UI/HUD), Barlow (body). fonts.css must precede ds.css. -->
+  <link rel="preload" href="./fonts/chakra-petch-700.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="./fonts.css" />
 
   <link rel="preload" as="image" href="./assets/bg/title.webp">
-  <link rel="preload" as="image" href="./assets/pilots/vael.webp">
+  <link rel="preload" as="image" href="./assets/pilots/sm/vael.webp">
   <!-- GITATO Design System v2 — linked FIRST so this surface can override it. -->
   <link rel="stylesheet" href="./ds.css" />
   <link rel="stylesheet" href="./css/style.css" />
@@ -94,7 +97,9 @@
         <div><span class="k">◂ ▸ / A D</span><p>Surf between the five lanes (1–5 jump straight to a lane)</p></div>
         <div><span class="k">SPACE</span><p>STRIKE the note as it hits the line</p></div>
         <div><span class="k">▴ ▾ / W S</span><p>Tilt up / down</p></div>
-        <div><span class="k">Gamepad</span><p>Left stick to steer · A to strike</p></div>
+        <div><span class="k">Gamepad</span><p>Left stick to steer · A to strike · LB for star power</p></div>
+        <div><span class="k">SHIFT / Q</span><p>STAR POWER: fill the meter by hitting gold notes, then double your score</p></div>
+        <div><span class="k">ESC / P</span><p>Pause (Start on a gamepad)</p></div>
       </div>
       <p class="explain">Every track is split into <b>four instrument levels</b> when Demucs is installed — DRUMS,
       BASS, OTHER and VOCALS — with the original frequency levels as fallback. Same song, four completely
@@ -129,7 +134,7 @@
         <button class="btn primary" data-action="analyze-url">ANALYZE <svg class="gi" aria-hidden="true"><use href="icons.svg#gi-chevron-right"></use></svg></button>
       </div>
 
-      <div id="dropZone" class="dropzone">
+      <div id="dropZone" class="dropzone" tabindex="0" role="button" data-action="pick-file" aria-label="Choose an audio file">
         <p>…or <b>drop an audio file</b> here (mp3 · wav · flac · m4a · ogg) — or click to choose</p>
         <input id="fileInput" type="file" accept="audio/*" hidden />
       </div>
@@ -296,7 +301,7 @@
   <section id="screen-calibrate" class="screen">
     <div class="panel">
       <h2>AUDIO CALIBRATION</h2>
-      <p class="sub">Tap SPACE or ENTER to the beat — 8 taps. We'll measure your timing offset and save it.</p>
+      <p class="sub">Tap SPACE, ENTER, gamepad A or the box below on every click: 12 taps. We measure how late the beat reaches you and save it.</p>
       <div id="calTapArea" data-action="cal-tap" class="cal-tap-area">
         <div class="cal-tap-text">TAP TO THE BEAT</div>
         <div id="calDots" class="cal-dots"></div>

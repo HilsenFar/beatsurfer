@@ -272,7 +272,7 @@ body{position:relative}
 .band-sub{font-size:var(--gt-t-xs);color:var(--gt-ink-2);text-transform:uppercase;
   letter-spacing:var(--gt-track-label);margin:var(--gt-s-1) 0 2px}
 .band-range{font-size:var(--gt-t-xs);color:var(--gt-ink-3);letter-spacing:var(--gt-track-label)}
-.band-spark{height:46px;display:flex;align-items:flex-end;gap:2px;margin:var(--gt-s-3) 0 var(--gt-s-2)}
+.band-spark{height:46px;display:flex;align-items:flex-end;gap:1px;margin:var(--gt-s-3) 0 var(--gt-s-2)}
 .band-spark i{flex:1;background:currentColor;border-radius:1px;opacity:.85;min-height:2px}
 .band-count{font-size:var(--gt-t-sm);color:var(--gt-ink-2)}
 /* Own row above the name: absolute top-right ran into HIGH-MID / FULL SPECTRUM
@@ -367,7 +367,7 @@ body{position:relative}
 .hud-score{font-size:var(--gt-t-2xl);font-weight:700;text-shadow:var(--glowC);line-height:1}
 .hud-acc{font-size:var(--gt-t-base);color:var(--gt-ink-2);letter-spacing:var(--gt-track-label)}
 .hud-combo{position:absolute;top:32%;left:0;right:0;text-align:center;
-  font-family:var(--gt-font-logo);font-size:var(--bs-combo);font-weight:900;
+  font-family:var(--gt-font-ui);font-size:var(--bs-combo);font-weight:700;
   letter-spacing:var(--gt-track-hero);opacity:0;transition:opacity var(--gt-d-1) var(--gt-ease-out);
   text-shadow:var(--glowM);filter:drop-shadow(0 0 16px rgba(255,43,214,.55))}
 .hud-combo.show{opacity:1}
@@ -375,12 +375,12 @@ body{position:relative}
   margin-top:-.25em;color:var(--gt-ink-2);text-shadow:0 0 10px rgba(25,224,255,.65)}
 .hud-combo.bump{animation:combo-bump .18s ease-out}
 @keyframes combo-bump{0%{transform:scale(1.12)}100%{transform:scale(1)}}
-.combo-shard{position:fixed;z-index:4;pointer-events:none;font-family:var(--gt-font-logo);
+.combo-shard{position:fixed;z-index:4;pointer-events:none;font-family:var(--gt-font-ui);
   font-weight:900;color:#fff;text-shadow:var(--glowM);
   animation:combo-shatter .65s ease-out forwards;transform:translate(-50%,-50%)}
 @keyframes combo-shatter{0%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) rotate(var(--rot)) scale(.35)}}
 .milestone{position:absolute;top:24%;left:0;right:0;text-align:center;
-  font-family:var(--gt-font-logo);font-size:var(--gt-t-2xl);font-weight:900;
+  font-family:var(--gt-font-ui);font-size:var(--gt-t-2xl);font-weight:700;
   letter-spacing:var(--gt-track-head);color:#fff;
   text-shadow:0 0 18px var(--gt-cyan),0 0 32px var(--gt-magenta);opacity:0;pointer-events:none}
 .milestone.show{animation:milestone-pop 1.2s ease-out forwards}
@@ -445,7 +445,7 @@ body{position:relative}
 
 /* ===== STAR POWER HUD ===== */
 .hud-starpower{position:absolute;bottom:calc(var(--gt-s-5) + var(--gt-s-7));left:50%;
-  transform:translateX(-50%);width:280px;text-align:center;opacity:.5;
+  transform:translateX(-50%);width:280px;text-align:center;opacity:.8;
   transition:opacity var(--gt-d-3) var(--gt-ease-soft)}
 .hud-starpower.ready{opacity:1;animation:sp-ready 1.2s ease-in-out infinite}
 .hud-starpower.active{opacity:1}
@@ -460,7 +460,7 @@ body{position:relative}
   box-shadow:0 0 12px var(--gt-yellow);transition:width var(--gt-d-2) var(--gt-ease-out)}
 .hud-starpower.active .sp-fill{background:linear-gradient(90deg,var(--gt-cyan),#a3e1ff);
   box-shadow:0 0 16px var(--gt-cyan)}
-.sp-hint{font-size:var(--gt-t-xs);letter-spacing:var(--gt-track-label);color:var(--gt-ink-3);
+.sp-hint{font-size:var(--gt-t-xs);letter-spacing:var(--gt-track-label);color:var(--gt-ink-2);
   margin-top:3px;text-transform:uppercase}
 .hud-starpower.ready .sp-hint{color:var(--gt-yellow-ink);animation:blink 1s steps(2) infinite}
 
@@ -635,6 +635,9 @@ body{position:relative}
   /* in-game HUD anchors */
   .hud-top{top:var(--gt-s-3);left:var(--gt-s-3);right:var(--gt-s-3)}
   .hud-pilot{width:40px;height:40px}
+  /* top-centre pause sat on the band name ("FULL SP‖RUM"): tuck it under the
+     pilot block instead, clear of the score and the star-power button */
+  .pause-touch-btn{top:calc(var(--gt-s-3) + 60px);left:var(--gt-s-3);transform:none}
   .hud-bottom{left:var(--gt-s-3);right:var(--gt-s-3);bottom:var(--gt-s-3)}
   /* Lifted clear of the star-power block: on a phone the left-anchored energy
      meter and the centred STAR POWER label shared 34px of the same band. */
